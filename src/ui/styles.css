@@ -512,3 +512,22 @@ dd {
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
+
+/* 写真の選択 */
+.picker {
+  display: grid;
+  gap: 8px;
+}
+
+.picker input[type='file'] {
+  padding: 8px;
+  background: var(--surface);
+}
+
+.picker-preview img,
+.care-photo {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}

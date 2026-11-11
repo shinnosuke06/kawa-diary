@@ -4,7 +4,9 @@ import { AuthBanner } from './components/AuthBanner';
 import type { DiaryData } from '../domain/types';
 import { HomePage } from './pages/HomePage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
+import { CareFormPage } from './pages/CareFormPage';
 import { ItemFormPage } from './pages/ItemFormPage';
+import { PhotoFormPage } from './pages/PhotoFormPage';
 import { WearsPage } from './pages/WearsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SetupPage } from './pages/SetupPage';
@@ -22,6 +24,14 @@ function RoutePage(props: { route: Route; data: DiaryData }) {
       return <ItemDetailPage data={data} itemId={route.itemId} />;
     case 'itemEdit':
       return <ItemFormPage itemId={route.itemId} />;
+    case 'photoNew':
+      return <PhotoFormPage data={data} itemId={route.itemId} />;
+    case 'photoEdit':
+      return <PhotoFormPage data={data} itemId={route.itemId} photoId={route.photoId} />;
+    case 'careNew':
+      return <CareFormPage data={data} itemId={route.itemId} />;
+    case 'careEdit':
+      return <CareFormPage data={data} itemId={route.itemId} careId={route.careId} />;
     case 'wears':
       return <WearsPage data={data} itemId={route.itemId} />;
     default:
