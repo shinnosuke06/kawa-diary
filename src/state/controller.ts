@@ -62,6 +62,8 @@ export class AppController {
     this.pickFolderFn = deps.pickFolder;
     this.newId = deps.newId ?? (() => crypto.randomUUID());
     this.now = deps.now ?? (() => new Date());
+    // 保存済みトークンで分かる範囲のログイン状態を最初から反映する
+    this.state = { ...this.state, signedIn: this.auth.isSignedIn() };
   }
 
   getState = (): AppState => this.state;
@@ -101,7 +103,13 @@ export class AppController {
   async signIn(): Promise<void> {
     // ポップアップがブロックされないよう、await より前に呼ぶ
     const pending = this.auth.signIn();
-    await pending;
+    try {
+      await pending;
+    } catch (e) {
+      // GIS の読み込みに失敗していた場合に備え、次のタップ用に準備し直す
+      this.auth.prepare().catch(() => {});
+      throw e;
+    }
     this.setState({ signedIn: true, loadError: null });
     await this.refresh();
   }

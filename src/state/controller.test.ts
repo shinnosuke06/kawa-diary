@@ -76,6 +76,22 @@ describe('起動', () => {
     expect(c.getState().data?.items.map((i) => i.id)).toEqual(['cached']);
   });
 
+  it('作った直後からログイン状態を反映する（初回画面のちらつき防止）', () => {
+    expect(setup({ signedIn: true }).c.getState().signedIn).toBe(true);
+    expect(setup({ signedIn: false }).c.getState().signedIn).toBe(false);
+  });
+
+  it('signIn が失敗したら次に備えて prepare をやり直す', async () => {
+    const { c, auth } = setup({ signedIn: false });
+    await c.start();
+    auth.signIn = async () => {
+      throw new AuthRequiredError();
+    };
+    const prepare = vi.spyOn(auth, 'prepare');
+    await expect(c.signIn()).rejects.toBeInstanceOf(AuthRequiredError);
+    expect(prepare).toHaveBeenCalledTimes(1);
+  });
+
   it('signIn 後に読み込む', async () => {
     const { c } = setup({ signedIn: false, data: makeData([makeItem()]) });
     await c.start();

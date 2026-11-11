@@ -1,0 +1,249 @@
+:root {
+  --bg: #f5efe6;
+  --surface: #fffaf3;
+  --text: #2a1f17;
+  --muted: #7a6a5c;
+  --accent: #8b4a24;
+  --accent-text: #fffaf3;
+  --border: #e2d6c6;
+  --danger: #b3261e;
+  --radius: 12px;
+  --font-heading: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+  --font-body: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 12px;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin-top: 28px;
+}
+
+a {
+  color: var(--accent);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
+}
+
+.page.wide {
+  max-width: 960px;
+}
+
+/* 見出し */
+.header {
+  margin-bottom: 16px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-right: 12px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.syncing {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ボタン */
+button,
+.button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.primary,
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+
+button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+/* フォーム */
+form {
+  display: grid;
+  gap: 16px;
+}
+
+label,
+.field-label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.save-error {
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: #fff4f2;
+  padding: 12px 16px;
+}
+
+.save-error p {
+  margin: 0 0 8px;
+}
+
+.save-error-title {
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* ログイン切れの帯 */
+.auth-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--text);
+  color: var(--surface);
+}
+
+.auth-banner button {
+  min-height: 40px;
+}
+
+.welcome {
+  display: grid;
+  gap: 16px;
+  padding-top: 15vh;
+  text-align: center;
+  justify-items: center;
+}
+
+.welcome h1 {
+  font-size: 2.2rem;
+}
