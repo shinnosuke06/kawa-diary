@@ -92,9 +92,22 @@
       <photoId>_thumb.jpg  長辺 480px
 ```
 
-- 「Kawa Diary」フォルダと「photos」フォルダ、`data.json` は、アプリの初回ログイン時にアプリ自身が自動作成する
-- 権限は `https://www.googleapis.com/auth/drive.file`（アプリが作ったファイルのみ操作可能）。このためフォルダは必ずアプリに作らせる。手動で作ったフォルダや手動で入れた写真はアプリからは見えない
-- 同名フォルダが複数見つかった場合は作成日が最も古いものを使う
+- 「Kawa Diary」フォルダは本人が手動で作成済み。アプリはこのフォルダを使う
+- 権限は `https://www.googleapis.com/auth/drive.file`。アプリが操作できるのは「アプリが作ったファイル」と「本人が Google Picker で選んだファイル・フォルダ」だけ。ドライブの他のファイルには触れない
+- 手動で「Kawa Diary」フォルダに入れたファイルはアプリからは見えない（アプリ経由で追加したものだけ扱う）
+
+### 3.1.1 初回設定（フォルダの選択）
+
+ログイン後、次の順で保存先を決める。
+
+1. `appProperties` に `kawaDiary='data'` を持つ `data.json`（ゴミ箱以外）を検索する。見つかれば、その親フォルダを保存先とし、`photos` フォルダも同様に `appProperties` の `kawaDiary='photos'` で探す。設定完了
+2. 見つからなければ「保存先フォルダを選んでください」画面を表示し、Google Picker（フォルダのみ選択可能）を開く
+3. 選ばれたフォルダの中に `photos` フォルダと空の `data.json` を作成する（どちらも `appProperties` で目印をつける）。設定完了
+
+- 2台目の端末では手順1で見つかるため、フォルダを選び直す必要はない
+- 選ばれたフォルダ名が「Kawa Diary」でなくてもそのまま使う
+- Google Picker はスマホのブラウザで不安定な場合があるため、手順書では「初回設定は PC で行う」ことを推奨する
+- 未検証の前提: 「Picker で選んだフォルダの中に、drive.file 権限でファイルを作成できる」。Google の公式文書に明記はなく、開発者コミュニティでは可能と報告されている。手順3で作成に失敗した場合は、権限を `https://www.googleapis.com/auth/drive`（ドライブ全体）に切り替える。本人専用（OAuth 同意画面がテストモード）のため審査は不要だが、初回ログイン時に「確認されていないアプリ」の警告が出る。この切り替えはデプロイ後の実機確認で判断し、必要なら設定値の変更だけで済むようにスコープを定数1か所にまとめておく
 
 ### 3.2 data.json の形式
 
@@ -185,7 +198,10 @@ interface CareRecord {
   - `#/items/:id/compare` 比較
 - PWA: `vite-plugin-pwa` で manifest とサービスワーカー（アプリ本体のみキャッシュ）を生成。ホーム画面に追加して起動できる
 - 公開: GitHub Actions で build し GitHub Pages（`https://shinnosuke06.github.io/kawa-diary/`）へデプロイ
-- 設定: Google の OAuth クライアント ID を環境変数 `VITE_GOOGLE_CLIENT_ID` で渡す（GitHub のリポジトリ変数に登録）。クライアント ID は秘密情報ではない
+- 設定: 次の3つを環境変数で渡す（GitHub のリポジトリ変数に登録）。いずれもブラウザに公開される前提の値で、秘密情報ではない
+  - `VITE_GOOGLE_CLIENT_ID`: OAuth クライアント ID
+  - `VITE_GOOGLE_API_KEY`: Google Picker 用の API キー（HTTP リファラーを `https://shinnosuke06.github.io/*` に、API を Google Picker API に制限する）
+  - `VITE_GOOGLE_APP_ID`: Google Cloud のプロジェクト番号（Picker の `setAppId` に必要）
 
 ### 4.2 部品の分け方
 
@@ -194,9 +210,10 @@ interface CareRecord {
 | `domain/` | 型定義、変更関数、集計（着用回数・1回あたり金額・使用期間・最新写真） | なし（純粋関数） |
 | `drive/auth` | Google Identity Services でアクセストークン取得・保持 | GIS スクリプト |
 | `drive/driveApi` | Drive API v3 の fetch ラッパー（list / create / get media / update / trash） | auth |
-| `storage/Repository` | 保存先のインターフェース: `load()` / `mutate(fn)` / `uploadPhoto()` / `getImage()` / `trashFiles()` | domain |
-| `storage/driveRepository` | Repository のドライブ実装（フォルダ自動作成を含む） | driveApi |
-| `storage/fakeRepository` | Repository のメモリ実装（テスト用） | domain |
+| `drive/picker` | Google Picker でフォルダを1つ選ばせ、フォルダ ID を返す | GIS トークン、Picker スクリプト |
+| `storage/Repository` | 保存先のインターフェース: `findSetup()` / `setup(folderId)` / `load()` / `mutate(fn)` / `uploadPhoto()` / `getImage()` / `trashFiles()` | domain |
+| `storage/driveRepository` | Repository のドライブ実装（3.1.1 の初回設定を含む） | driveApi |
+| `storage/fakeRepository` | Repository のメモリ実装（テスト用。フォルダ選択も即座に成功させる） | domain |
 | `images/` | 縮小、EXIF 撮影日の取得 | exifr |
 | `cache/` | IndexedDB キャッシュ | idb-keyval |
 | `state/` | 画面に渡す状態管理。キャッシュと Repository をつなぎ、保存キューを持つ | 上記 |
@@ -204,7 +221,7 @@ interface CareRecord {
 
 ### 4.3 ログイン
 
-- Google Identity Services のトークンクライアント（`initTokenClient`）を使用。スコープは `drive.file`
+- Google Identity Services のトークンクライアント（`initTokenClient`）を使用。スコープは `drive.file`（3.1.1 の未検証の前提が崩れた場合は `drive`）
 - トークンは有効期限とともに localStorage に保存し、期限内なら再起動後もそのまま使う
 - 期限切れ時は画面上部に「Google で続ける」ボタンを表示。ブラウザのポップアップブロックを避けるため、タップ操作から取得する
 - 同意済みなら2回目以降は確認画面が一瞬出て自動で閉じる
@@ -220,25 +237,29 @@ interface CareRecord {
 | 画像の読み込み失敗 | 「この形式の画像は読み込めません」を表示 |
 | data.json が壊れている・形式が違う | エラー表示し、上書きしない（ドライブの版履歴から復元可能） |
 | 写真ファイルがドライブで見つからない | その写真の位置に「画像が見つかりません」を表示。記録自体は残す |
+| 初回設定で選んだフォルダにファイルを作れない（403） | 「このフォルダには保存できません」と表示し、フォルダ選択からやり直せるようにする（3.1.1 の切り替え判断の材料にもなる） |
+| Picker でフォルダを選ばずに閉じた | 「保存先フォルダを選んでください」画面に戻る |
 
 ## 6. テスト
 
 - 単体テスト（Vitest）
   - domain: 各変更関数、着用日の追加・取り消し・重複防止、1回あたり金額、使用期間、最新写真の選び方、写真削除時の手入れ記録の `photoId` 解除
-  - driveRepository: fetch をモックし、初回のフォルダ自動作成、既存フォルダの再利用、保存時の「読み直してから適用」、401 時の挙動
+  - driveRepository: fetch をモックし、既存 data.json の検索（2台目の端末）、選ばれたフォルダ内への photos・data.json 作成、作成時 403 の扱い、保存時の「読み直してから適用」、401 時の挙動
   - images: 縮小後のサイズ計算（長辺 2048 / 480、元が小さい場合）
   - state: 保存キューが順番に実行されること
 - 画面テスト（Playwright、スマホサイズ）
   - fakeRepository を使うビルドモード（`VITE_FAKE_DRIVE=1`）で実行。本番ビルドには含めない
-  - 主な流れ: 登録 → 写真追加 → 手入れ記録 → 今日着た → 比較画面でスライダー操作
-- 本物の Google ログインとドライブ保存は、デプロイ後に本人のスマホと PC で確認する
+  - 主な流れ: 初回のフォルダ選択 → 登録 → 写真追加 → 手入れ記録 → 今日着た → 比較画面でスライダー操作
+- 本物の Google ログイン、Picker でのフォルダ選択、ドライブ保存は、デプロイ後に本人の PC とスマホで確認する（3.1.1 の未検証の前提もここで確かめる）
 
 ## 7. 本人に行ってもらう作業
 
 手順書（`docs/setup.md`）を用意する。
 
-1. Google Cloud でプロジェクト作成、Google Drive API を有効化
+1. Google Cloud でプロジェクト作成、Google Drive API と Google Picker API を有効化
 2. OAuth 同意画面を「外部・テスト」で作成し、自分をテストユーザーに追加
 3. OAuth クライアント ID（ウェブアプリ）を作成。承認済み JavaScript 生成元に `https://shinnosuke06.github.io` を登録
-4. GitHub のリポジトリ変数 `VITE_GOOGLE_CLIENT_ID` にクライアント ID を登録
-5. GitHub Pages を有効化（ソース: GitHub Actions）
+4. API キーを作成し、HTTP リファラーと API（Google Picker API）で制限する
+5. GitHub のリポジトリ変数 `VITE_GOOGLE_CLIENT_ID` / `VITE_GOOGLE_API_KEY` / `VITE_GOOGLE_APP_ID`（プロジェクト番号）を登録
+6. GitHub Pages を有効化（ソース: GitHub Actions）
+7. デプロイ後、PC でアプリを開いてログインし、「Kawa Diary」フォルダを選ぶ（初回設定）
