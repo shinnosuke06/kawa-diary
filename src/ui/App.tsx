@@ -5,6 +5,7 @@ import type { DiaryData } from '../domain/types';
 import { HomePage } from './pages/HomePage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
 import { CareFormPage } from './pages/CareFormPage';
+import { ComparePage } from './pages/ComparePage';
 import { ItemFormPage } from './pages/ItemFormPage';
 import { PhotoFormPage } from './pages/PhotoFormPage';
 import { WearsPage } from './pages/WearsPage';
@@ -32,6 +33,8 @@ function RoutePage(props: { route: Route; data: DiaryData }) {
       return <CareFormPage data={data} itemId={route.itemId} />;
     case 'careEdit':
       return <CareFormPage data={data} itemId={route.itemId} careId={route.careId} />;
+    case 'compare':
+      return <ComparePage data={data} itemId={route.itemId} />;
     case 'wears':
       return <WearsPage data={data} itemId={route.itemId} />;
     default:
