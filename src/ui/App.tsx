@@ -1,20 +1,26 @@
 import { DataFormatError, errorMessage } from '../errors';
 import { useAppState, useController } from '../state/AppContext';
 import { AuthBanner } from './components/AuthBanner';
-import { Header } from './components/Header';
+import type { DiaryData } from '../domain/types';
+import { HomePage } from './pages/HomePage';
+import { ItemDetailPage } from './pages/ItemDetailPage';
+import { ItemFormPage } from './pages/ItemFormPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SetupPage } from './pages/SetupPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { useRoute, type Route } from './router';
 
-function RoutePage(props: { route: Route }) {
-  switch (props.route.name) {
+function RoutePage(props: { route: Route; data: DiaryData }) {
+  const { route, data } = props;
+  switch (route.name) {
     case 'home':
-      return (
-        <main className="page">
-          <Header title="Kawa Diary" />
-        </main>
-      );
+      return <HomePage data={data} />;
+    case 'itemNew':
+      return <ItemFormPage />;
+    case 'item':
+      return <ItemDetailPage data={data} itemId={route.itemId} />;
+    case 'itemEdit':
+      return <ItemFormPage itemId={route.itemId} />;
     default:
       return <NotFoundPage />;
   }
@@ -59,7 +65,7 @@ export function App() {
   return (
     <>
       {!state.signedIn && <AuthBanner />}
-      <RoutePage route={route} />
+      <RoutePage route={route} data={state.data} />
     </>
   );
 }
