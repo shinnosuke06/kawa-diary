@@ -374,3 +374,141 @@ a:focus-visible {
   text-decoration: none;
   box-shadow: 0 6px 16px rgb(42 31 23 / 25%);
 }
+
+/* 詳細 */
+.photo-view {
+  width: 100%;
+  max-height: 70vh;
+  margin: 0 auto 16px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-view img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.info,
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.info div,
+.stats div {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.stats div {
+  background: #f9f1e6;
+}
+
+dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.memo {
+  white-space: pre-wrap;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.lead {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+}
+
+.timeline-entry p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.timeline-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+}
+
+.timeline-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius) - 4px);
+  background: #f0e2cf;
+  color: var(--accent);
+  font-size: 1.4rem;
+}
+
+.timeline-date {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.timeline-care {
+  font-weight: 600;
+}
+
+/* 着用履歴 */
+.inline-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.inline-form label {
+  flex: 1;
+}
+
+.wear-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wear-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
