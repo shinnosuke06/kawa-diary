@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createItem, finishSetup, makeJpeg } from './helpers';
+import { createItem, finishSetup, makeJpeg, type FakeWindow as HelperFakeWindow } from './helpers';
 
 type FakeWindow = {
   __kawaFake: {
@@ -107,4 +107,22 @@ test('手入れを編集・削除できる', async ({ page }) => {
   await page.getByRole('link', { name: /防水/ }).click();
   await page.getByRole('button', { name: '削除' }).click();
   await expect(page.getByText('まだ記録がありません')).toBeVisible();
+});
+
+test('写真を削除すると、ゴミ箱への移動を待たずに詳細へ戻る', async ({ page }) => {
+  await createItem(page, { name: 'ブーツ' });
+  await page.getByRole('link', { name: '写真を追加' }).click();
+  await page
+    .getByLabel('写真を選ぶ')
+    .setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeJpeg(page, 800, 600, '#663300') });
+  await expect(page.getByLabel('撮影日')).not.toHaveValue('');
+  await page.getByLabel('メモ').fill('消す');
+  await page.getByRole('button', { name: '保存' }).click();
+  await page.evaluate(() => {
+    (window as unknown as HelperFakeWindow).__kawaFake.repo.trashFiles = () => new Promise((r) => setTimeout(r, 4000));
+  });
+  await page.getByRole('link', { name: /消す/ }).click();
+  await page.getByRole('button', { name: '削除' }).click();
+  await expect(page.getByText('まだ記録がありません')).toBeVisible({ timeout: 1500 });
+  await expect(page.getByText('この記録は他の端末で削除されたようです。')).toHaveCount(0);
 });

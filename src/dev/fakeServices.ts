@@ -6,6 +6,7 @@ import { createFakeRepository } from '../storage/fakeRepository';
 
 export function createFakeServices(): ControllerDeps {
   const repo = createFakeRepository();
-  (window as unknown as { __kawaFake: unknown }).__kawaFake = { repo };
-  return { repo, auth: createFakeAuth(), pickFolder: async () => 'fake-folder', cache: createIdbCache() };
+  const auth = createFakeAuth();
+  (window as unknown as { __kawaFake: unknown }).__kawaFake = { repo, auth };
+  return { repo, auth, pickFolder: async () => 'fake-folder', cache: createIdbCache() };
 }

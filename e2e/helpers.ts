@@ -39,3 +39,15 @@ export async function createItem(
   await page.getByRole('button', { name: '保存' }).click();
   await expect(page.getByRole('heading', { name: opts.name, exact: true })).toBeVisible();
 }
+
+// 開発用フェイク（window.__kawaFake）の型
+export interface FakeHandle {
+  repo: {
+    files: Map<string, Blob>;
+    peekData(): { items: { id: string; wearDates: string[]; photos: { id: string }[] }[] };
+    mutate(fn: (d: { items: { wearDates: string[] }[] }) => unknown): Promise<unknown>;
+    trashFiles(ids: string[]): Promise<void>;
+  };
+  auth: { expire(): void; signInFails: boolean };
+}
+export type FakeWindow = Window & { __kawaFake: FakeHandle };

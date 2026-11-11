@@ -14,13 +14,20 @@ import { NotFoundPage } from './NotFoundPage';
 export function ItemDetailPage(props: { data: DiaryData; itemId: string }) {
   const controller = useController();
   const today = todayLocal();
-  const wear = useAsyncAction((itemId: string) => controller.toggleWear(itemId, today));
+  // 押した時点の日付と、画面に表示している状態で「記録する／取り消す」を決める
+  const wear = useAsyncAction((itemId: string, date: string, worn: boolean) =>
+    worn ? controller.removeWear(itemId, date) : controller.addWear(itemId, date),
+  );
   const item = props.data.items.find((i) => i.id === props.itemId);
   if (!item) return <NotFoundPage message="この持ち物は見つかりません" />;
 
   const base = `/items/${encodeURIComponent(item.id)}`;
   const photo = latestPhoto(item);
   const wornToday = item.wearDates.includes(today);
+  const onWear = () => {
+    const date = todayLocal();
+    void wear.run(item.id, date, item.wearDates.includes(date));
+  };
   const lastCare = lastCareDate(item);
   const period = usagePeriod(item, today);
   const perWear = costPerWear(item);
@@ -89,7 +96,7 @@ export function ItemDetailPage(props: { data: DiaryData; itemId: string }) {
           className="wear-button"
           aria-pressed={wornToday}
           disabled={wear.busy}
-          onClick={() => void wear.run(item.id)}
+          onClick={onWear}
         >
           {wornToday ? '今日着た ✓' : '今日着た'}
         </button>
@@ -106,7 +113,7 @@ export function ItemDetailPage(props: { data: DiaryData; itemId: string }) {
           編集
         </a>
       </div>
-      <SaveError error={wear.error} onRetry={() => void wear.run(item.id)} />
+      <SaveError error={wear.error} onRetry={onWear} />
 
       <h2>記録</h2>
       <Timeline itemId={item.id} entries={timeline(item)} />

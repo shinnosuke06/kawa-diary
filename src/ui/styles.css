@@ -236,6 +236,11 @@ a:focus-visible {
   min-height: 40px;
 }
 
+.auth-banner-error {
+  width: 100%;
+  font-size: 0.9rem;
+}
+
 .welcome {
   display: grid;
   gap: 16px;
@@ -552,13 +557,14 @@ dd {
   overflow: hidden;
   border-radius: var(--radius);
   background: #1d1611;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   cursor: ew-resize;
 }
 
 .compare-frame.mode-align {
+  touch-action: none;
   cursor: move;
   outline: 2px dashed var(--accent);
   outline-offset: 2px;

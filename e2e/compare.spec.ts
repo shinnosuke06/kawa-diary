@@ -29,6 +29,8 @@ test('最古と最新を重ねて比較し、境界線と位置合わせを操�
 
   const slider = page.getByRole('slider', { name: '境界線' });
   await expect(slider).toHaveAttribute('aria-valuenow', '50');
+  // スライダー操作中も縦スクロールはできる（スマホで下の写真一覧に届くように）
+  await expect(page.getByTestId('compare-frame')).toHaveCSS('touch-action', 'pan-y');
   const box = (await page.getByTestId('compare-frame').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -38,6 +40,7 @@ test('最古と最新を重ねて比較し、境界線と位置合わせを操�
 
   await page.getByRole('button', { name: '位置合わせ' }).click();
   await expect(page.getByRole('button', { name: '位置合わせ' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('compare-frame')).toHaveCSS('touch-action', 'none');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2);

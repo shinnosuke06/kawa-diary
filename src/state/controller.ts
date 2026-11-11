@@ -21,6 +21,7 @@ import { AuthRequiredError } from '../errors';
 import type { PreparedPhoto } from '../images/preparePhoto';
 import type { Repository } from '../storage/repository';
 import { SaveQueue } from './saveQueue';
+import { singleFlight } from './singleFlight';
 
 export type SetupStatus = 'unknown' | 'needsFolder' | 'ready';
 
@@ -42,6 +43,8 @@ export interface ControllerDeps {
 }
 
 const FULL_IMAGE_LIMIT = 20;
+// アプリに戻ったときの再読み込みは、この間隔より短ければ行わない
+const RESUME_REFRESH_INTERVAL_MS = 30_000;
 
 export class AppController {
   private state: AppState = { data: null, signedIn: false, setup: 'unknown', syncing: false, loadError: null };
@@ -54,6 +57,8 @@ export class AppController {
   private readonly pickFolderFn: () => Promise<string | null>;
   private readonly newId: () => string;
   private readonly now: () => Date;
+  private lastRefreshAt = 0;
+  private background: Promise<void> = Promise.resolve();
 
   constructor(deps: ControllerDeps) {
     this.repo = deps.repo;
@@ -114,24 +119,48 @@ export class AppController {
     await this.refresh();
   }
 
-  async refresh(): Promise<void> {
+  // 同時に呼ばれたら1回にまとめる
+  refresh = singleFlight(() => this.doRefresh());
+
+  private async doRefresh(): Promise<void> {
     if (!this.auth.isSignedIn()) {
       this.setState({ signedIn: false });
       return;
     }
+    this.lastRefreshAt = this.now().getTime();
     this.setState({ syncing: true });
     try {
       if (!(await this.repo.findSetup())) {
         this.setState({ setup: 'needsFolder', loadError: null });
         return;
       }
-      await this.setData(await this.repo.load());
+      // 保存と同じ順番待ちで読む（古い読み込み結果で新しい保存を上書きしないため）
+      await this.setData(await this.queue.run(() => this.repo.load()));
       this.setState({ setup: 'ready', loadError: null });
     } catch (e) {
       this.setState({ loadError: e, ...(e instanceof AuthRequiredError ? { signedIn: false } : {}) });
     } finally {
       this.setState({ syncing: false });
     }
+  }
+
+  // アプリが前面に戻ったとき: 日付の変化を描き直し、他の端末の変更を読み込む
+  async resume(): Promise<void> {
+    const signedIn = this.auth.isSignedIn();
+    this.setState({ signedIn });
+    if (signedIn && this.now().getTime() - this.lastRefreshAt >= RESUME_REFRESH_INTERVAL_MS) {
+      await this.refresh();
+    }
+  }
+
+  /** バックグラウンドのゴミ箱移動が終わるまで待つ（テスト用） */
+  settled(): Promise<void> {
+    return this.background;
+  }
+
+  // 写真ファイルのゴミ箱移動は画面を待たせずに裏で行う
+  private trashLater(photos: Photo[]): void {
+    this.background = this.background.then(() => this.trash(photos));
   }
 
   async chooseFolder(): Promise<void> {
@@ -221,7 +250,7 @@ export class AppController {
       removed = d.items.find((i) => i.id === itemId);
       return deleteItem(d, itemId);
     });
-    if (removed) await this.trash(removed.photos);
+    if (removed) this.trashLater(removed.photos);
   }
 
   async addPhoto(itemId: string, prepared: PreparedPhoto, meta: PhotoMeta): Promise<void> {
@@ -242,7 +271,7 @@ export class AppController {
       removed = d.items.find((i) => i.id === itemId)?.photos.find((p) => p.id === photoId);
       return deletePhoto(d, itemId, photoId, now);
     });
-    if (removed) await this.trash([removed]);
+    if (removed) this.trashLater([removed]);
   }
 
   async saveCare(itemId: string, input: CareInput, prepared: PreparedPhoto | null, careId?: string): Promise<void> {

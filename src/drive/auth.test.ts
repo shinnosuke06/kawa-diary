@@ -74,16 +74,20 @@ describe('createGisAuth', () => {
     await p;
     expect(auth.isSignedIn()).toBe(true);
     expect(auth.getToken()).toBe('tok');
-    expect(JSON.parse(storage.getItem('kawa-diary.token')!)).toEqual({ accessToken: 'tok', expiresAt: NOW + 3600_000 });
+    expect(JSON.parse(storage.getItem('kawa-diary.token')!)).toEqual({
+      accessToken: 'tok',
+      expiresAt: NOW + 3600_000,
+      scope: 'scope-x',
+    });
   });
 
   it('再起動後も期限内ならログイン済み', () => {
-    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000 }));
+    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000, scope: 'scope-x' }));
     expect(make().getToken()).toBe('tok');
   });
 
   it('期限の 60 秒前で無効になる', () => {
-    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000 }));
+    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000, scope: 'scope-x' }));
     const auth = make();
     now = NOW + 3600_000 - 61_000;
     expect(auth.isSignedIn()).toBe(true);
@@ -92,7 +96,7 @@ describe('createGisAuth', () => {
   });
 
   it('clear でログアウト', () => {
-    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000 }));
+    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'tok', expiresAt: NOW + 3600_000, scope: 'scope-x' }));
     const auth = make();
     auth.clear();
     expect(auth.isSignedIn()).toBe(false);
@@ -117,6 +121,14 @@ describe('createGisAuth', () => {
 
   it('prepare 前の signIn は AuthRequiredError', async () => {
     await expect(make().signIn()).rejects.toBeInstanceOf(AuthRequiredError);
+  });
+
+  it('スコープが違う（設定変更前の）保存済みトークンは未ログイン扱い', () => {
+    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'old', expiresAt: NOW + 3600_000, scope: 'other' }));
+    expect(make().isSignedIn()).toBe(false);
+    expect(() => make().getToken()).toThrow(AuthRequiredError);
+    storage.setItem('kawa-diary.token', JSON.stringify({ accessToken: 'old', expiresAt: NOW + 3600_000 }));
+    expect(make().isSignedIn()).toBe(false);
   });
 
   it('壊れた保存値は未ログイン扱い', () => {

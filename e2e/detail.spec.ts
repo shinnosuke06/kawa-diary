@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createItem, finishSetup } from './helpers';
+import { createItem, finishSetup, type FakeWindow } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   page.on('dialog', (d) => d.accept());
@@ -45,4 +45,51 @@ test('写真が無いと比較できない・記録は空', async ({ page }) => 
 test('存在しない持ち物', async ({ page }) => {
   await page.goto('./#/items/nope');
   await expect(page.getByText('この持ち物は見つかりません')).toBeVisible();
+});
+
+test('他の端末で今日の着用が記録済みでも、未記録の表示から押すと記録される', async ({ page }) => {
+  await createItem(page, { name: 'ライダース' });
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  // 他の端末で今日を記録した状態を作る（この画面はまだ古いまま）
+  await page.evaluate(async (t) => {
+    await (window as unknown as FakeWindow).__kawaFake.repo.mutate((d) => ({
+      ...d,
+      items: d.items.map((i) => ({ ...i, wearDates: [t] })),
+    }));
+  }, today);
+  await page.getByRole('button', { name: '今日着た', exact: true }).click();
+  await expect(page.getByRole('button', { name: '今日着た ✓', exact: true })).toBeVisible();
+  const dates = await page.evaluate(() => (window as unknown as FakeWindow).__kawaFake.repo.peekData().items[0].wearDates);
+  expect(dates).toEqual([today]);
+});
+
+test('日付が変わった後に押すと、その日の日付で記録される', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-11T23:58:00'));
+  await createItem(page, { name: 'ライダース' });
+  await page.clock.setFixedTime(new Date('2026-11-12T00:03:00'));
+  await page.getByRole('button', { name: '今日着た', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as FakeWindow).__kawaFake.repo.peekData().items[0].wearDates))
+    .toEqual(['2026-11-12']);
+});
+
+test('アプリに戻ると、日付の変化と他の端末での変更が表示に反映される', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-11T21:00:00'));
+  await createItem(page, { name: 'ライダース' });
+  await page.getByRole('button', { name: '今日着た', exact: true }).click();
+  await expect(page.getByRole('button', { name: '今日着た ✓', exact: true })).toBeVisible();
+  // 翌朝、他の端末で過去の着用を1件追加してから、このアプリに戻る
+  await page.evaluate(async () => {
+    await (window as unknown as FakeWindow).__kawaFake.repo.mutate((d) => ({
+      ...d,
+      items: d.items.map((i) => ({ ...i, wearDates: ['2026-11-01', ...i.wearDates] })),
+    }));
+  });
+  await page.clock.setFixedTime(new Date('2026-11-12T08:00:00'));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(page.getByRole('button', { name: '今日着た', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('link', { name: '2回', exact: true })).toBeVisible();
 });

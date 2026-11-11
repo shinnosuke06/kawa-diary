@@ -41,6 +41,7 @@ const MARGIN_MS = 60_000;
 interface StoredToken {
   accessToken: string;
   expiresAt: number;
+  scope: string;
 }
 
 async function loadGisDefault(): Promise<GisLike> {
@@ -67,7 +68,8 @@ export function createGisAuth(opts: {
       const raw = storage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const t = JSON.parse(raw) as StoredToken;
-      return typeof t.accessToken === 'string' && typeof t.expiresAt === 'number' ? t : null;
+      // 権限の設定（DRIVE_SCOPE）を変えた後は、古いトークンを使わない
+      return typeof t.accessToken === 'string' && typeof t.expiresAt === 'number' && t.scope === opts.scope ? t : null;
     } catch {
       return null;
     }
@@ -92,7 +94,11 @@ export function createGisAuth(opts: {
               settle(new AuthRequiredError(res.error ?? 'no access token'));
               return;
             }
-            const token: StoredToken = { accessToken: res.access_token, expiresAt: now() + (res.expires_in ?? 3600) * 1000 };
+            const token: StoredToken = {
+              accessToken: res.access_token,
+              expiresAt: now() + (res.expires_in ?? 3600) * 1000,
+              scope: opts.scope,
+            };
             storage.setItem(STORAGE_KEY, JSON.stringify(token));
             settle(null);
           },
@@ -133,13 +139,34 @@ export function createGisAuth(opts: {
   return auth;
 }
 
-// 画面確認用。常にログイン済み
-export function createFakeAuth(): AuthService {
-  return {
+export interface FakeAuth extends AuthService {
+  /** ログイン切れを再現する */
+  expire(): void;
+  /** true の間は signIn が失敗する */
+  signInFails: boolean;
+}
+
+// 画面確認用。最初からログイン済み
+export function createFakeAuth(): FakeAuth {
+  let signedIn = true;
+  const auth: FakeAuth = {
+    signInFails: false,
     prepare: async () => {},
-    isSignedIn: () => true,
-    getToken: () => 'fake-token',
-    signIn: async () => {},
-    clear: () => {},
+    isSignedIn: () => signedIn,
+    getToken: () => {
+      if (!signedIn) throw new AuthRequiredError();
+      return 'fake-token';
+    },
+    signIn: async () => {
+      if (auth.signInFails) throw new AuthRequiredError('popup_closed');
+      signedIn = true;
+    },
+    clear: () => {
+      signedIn = false;
+    },
+    expire: () => {
+      signedIn = false;
+    },
   };
+  return auth;
 }

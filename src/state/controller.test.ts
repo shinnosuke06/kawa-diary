@@ -180,6 +180,7 @@ describe('保存', () => {
     await c.addPhoto('i1', prepared(), { takenAt: '2026-11-10', memo: '' });
     expect(repo.files.size).toBe(2);
     await c.deleteItem('i1');
+    await c.settled();
     expect(repo.files.size).toBe(0);
     expect(c.getState().data?.items).toEqual([]);
   });
@@ -190,6 +191,7 @@ describe('保存', () => {
     await c.addPhoto('i1', prepared(), { takenAt: '2026-11-10', memo: '' });
     const photo = repo.peekData()!.items[0].photos[0];
     await c.deletePhoto('i1', photo.id);
+    await c.settled();
     expect(repo.files.size).toBe(0);
     expect(await cache.getThumb(photo.thumbFileId)).toBeNull();
   });
@@ -251,5 +253,73 @@ describe('画像', () => {
     const getImage = vi.spyOn(repo, 'getImage');
     expect(await (await c.loadImage('t9', 'thumb')).text()).toBe('cached');
     expect(getImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('レビュー対応', () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  it('deleteItem / deletePhoto はゴミ箱移動の完了を待たずに戻る', async () => {
+    const { c, repo } = setup({ data: makeData([makeItem({ id: 'i1' }), makeItem({ id: 'i2' })]) });
+    await c.start();
+    await c.addPhoto('i1', prepared(), { takenAt: '2026-11-10', memo: '' });
+    await c.addPhoto('i2', prepared(), { takenAt: '2026-11-10', memo: '' });
+    repo.trashFiles = () => new Promise(() => {}); // 終わらないゴミ箱移動
+    const timeout = sleep(200).then(() => 'timeout');
+    expect(await Promise.race([c.deleteItem('i1').then(() => 'done'), timeout])).toBe('done');
+    const photoId = repo.peekData()!.items[0].photos[0].id;
+    expect(await Promise.race([c.deletePhoto('i2', photoId).then(() => 'done'), timeout])).toBe('done');
+  });
+
+  it('refresh の読み込みは保存と順番に実行され、古いデータで画面を上書きしない', async () => {
+    const { c, repo } = setup({ data: makeData([makeItem()]) });
+    await c.start();
+    const load = repo.load.bind(repo);
+    repo.load = async () => {
+      const d = await load();
+      await sleep(30);
+      return d;
+    };
+    const r = c.refresh();
+    const s = c.addWear('i1', '2026-11-11');
+    await Promise.all([r, s]);
+    expect(c.getState().data?.items[0].wearDates).toEqual(['2026-11-11']);
+  });
+
+  it('同時に呼ばれた refresh は1回にまとめる', async () => {
+    const { c, repo } = setup({ data: makeData([makeItem()]) });
+    await c.start();
+    const findSetup = vi.spyOn(repo, 'findSetup');
+    await Promise.all([c.refresh(), c.refresh()]);
+    expect(findSetup).toHaveBeenCalledTimes(1);
+  });
+
+  it('resume はログイン中なら最新を読み込み、30 秒以内は読み直さない', async () => {
+    let now = new Date('2026-11-11T10:00:00.000Z');
+    const repo = createFakeRepository({ configured: true, data: makeData([makeItem()]) });
+    const c = new AppController({
+      repo,
+      auth: controllableAuth(true),
+      cache: createMemoryCache(),
+      pickFolder: async () => null,
+      now: () => now,
+    });
+    await c.start();
+    const findSetup = vi.spyOn(repo, 'findSetup');
+    now = new Date('2026-11-11T10:00:10.000Z');
+    await c.resume();
+    expect(findSetup).toHaveBeenCalledTimes(0);
+    now = new Date('2026-11-11T10:05:00.000Z');
+    await c.resume();
+    expect(findSetup).toHaveBeenCalledTimes(1);
+  });
+
+  it('resume は未ログインでも画面を描き直すため通知する', async () => {
+    const { c } = setup({ signedIn: false });
+    await c.start();
+    const listener = vi.fn();
+    c.subscribe(listener);
+    await c.resume();
+    expect(listener).toHaveBeenCalled();
   });
 });

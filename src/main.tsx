@@ -33,6 +33,10 @@ async function main() {
   }
   const controller = new AppController(services);
   void controller.start();
+  // ホーム画面のアプリや開いたままのタブに戻ったとき、日付と他の端末の変更を反映する
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void controller.resume();
+  });
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AppProvider controller={controller}>
