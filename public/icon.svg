@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#8b4a24"/>
+  <rect x="44" y="44" width="424" height="424" rx="80" fill="none" stroke="#f5efe6" stroke-width="10" stroke-dasharray="26 18" opacity="0.85"/>
+  <text x="256" y="268" text-anchor="middle" dominant-baseline="central" font-size="280" font-weight="700" fill="#fffaf3"
+    font-family="'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP','WenQuanYi Zen Hei',serif">革</text>
+</svg>
